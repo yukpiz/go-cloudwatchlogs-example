@@ -12,8 +12,8 @@ import (
 
 func main() {
 	input := &cloudwatchlogs.GetLogEventsInput{
-		LogGroupName:  aws.String("/ecs/redish-staging-migration-task"),
-		LogStreamName: aws.String("ecs/redish-staging-migration-ecs-container/92012b12-ebbd-4e46-bc19-36ea026c57c2"),
+		LogGroupName:  aws.String("/ecs/staging-migration-task"),
+		LogStreamName: aws.String("ecs/staging-migration-ecs-container/"),
 		StartTime:     aws.Int64(time.Now().Unix()),
 	}
 
@@ -22,9 +22,27 @@ func main() {
 		&aws.Config{Region: aws.String("ap-northeast-1")},
 	))
 	cwl := cloudwatchlogs.New(sess)
-	out, err := cwl.GetLogEventsWithContext(ctx, input)
-	if err != nil {
-		panic(err)
-	}
-	log.Printf("LogEvents: %+v\n", out.String())
+
+	go func() {
+		tick := time.Tick(5 * time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("done!!!")
+				return
+			case <-tick:
+				out, err := cwl.GetLogEventsWithContext(ctx, input)
+				if err != nil {
+					panic(err)
+				}
+				log.Printf("LogEvents: %+v\n", out.String())
+			}
+		}
+	}()
+	//out, err := cwl.GetLogEventsWithContext(ctx, input)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//log.Printf("LogEvents: %+v\n", out.String())
+	time.Sleep(30 * time.Second)
 }
